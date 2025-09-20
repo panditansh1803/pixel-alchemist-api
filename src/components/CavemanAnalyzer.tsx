@@ -131,7 +131,7 @@ const CavemanAnalyzer = () => {
 
       const result: AnalysisResponse = await response.json();
 
-      if (result.status === "success" && result.video_url) {
+      if (result.status === "success" && result.video_url && result.video_url.trim() && result.video_url.startsWith('http')) {
         setVideoUrl(result.video_url);
         toast({
           title: "Cave Magic Complete!",
