@@ -5,10 +5,11 @@ import { toast } from '@/components/ui/use-toast';
 import { Upload, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
 
 interface AnalysisResponse {
-  success: boolean;
+  status: string;
+  video_url?: string;
   message?: string;
-  videoUrl?: string;
-  analysisId?: string;
+  processing_status?: string;
+  created_at?: string;
 }
 
 const CavemanAnalyzer = () => {
@@ -16,6 +17,7 @@ const CavemanAnalyzer = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
   const WEBHOOK_URL = "https://anss1111.app.n8n.cloud/webhook-test/image-analysis";
 
@@ -129,9 +131,15 @@ const CavemanAnalyzer = () => {
 
       const result: AnalysisResponse = await response.json();
 
-      if (result.success) {
+      if (result.status === "success" && result.video_url) {
+        setVideoUrl(result.video_url);
         toast({
-          title: "Cave Magic Work!",
+          title: "Cave Magic Complete!",
+          description: result.message || "Your caveman transformation is ready!",
+        });
+      } else if (result.status === "success") {
+        toast({
+          title: "Cave Magic Working!",
           description: result.message || "Caveman spirits processing your picture! Video coming soon!",
         });
       } else {
@@ -251,6 +259,29 @@ const CavemanAnalyzer = () => {
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Video Display */}
+          {videoUrl && (
+            <Card className="bg-accent/20">
+              <CardHeader>
+                <CardTitle className="text-center">🎬 Your Caveman Transformation! 🎬</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center">
+                <video
+                  src={videoUrl}
+                  controls
+                  autoPlay
+                  className="w-full max-w-md mx-auto rounded-lg shadow-lg"
+                  style={{ maxWidth: '500px' }}
+                >
+                  Your browser does not support video playback.
+                </video>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Cave spirits have transformed you into a mighty caveman warrior!
+                </p>
               </CardContent>
             </Card>
           )}
