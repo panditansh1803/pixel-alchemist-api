@@ -10,6 +10,7 @@ interface AnalysisResponse {
   message?: string;
   processing_status?: string;
   created_at?: string;
+  request_id?: string;
 }
 
 const CavemanAnalyzer = () => {
@@ -18,6 +19,8 @@ const CavemanAnalyzer = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [requestId, setRequestId] = useState<string | null>(null);
 
   const WEBHOOK_URL = "https://anss1111.app.n8n.cloud/webhook-test/image-analysis";
 
@@ -89,6 +92,55 @@ const CavemanAnalyzer = () => {
     });
   };
 
+  const startPollingForVideo = useCallback(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const payload = {
+          check_status: true,
+          request_id: requestId,
+          timestamp: new Date().toISOString()
+        };
+
+        const response = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          const result: AnalysisResponse = await response.json();
+          
+          if (result.status === "success" && result.video_url && result.video_url.trim() && result.video_url.startsWith('http')) {
+            setVideoUrl(result.video_url);
+            setIsProcessing(false);
+            clearInterval(pollInterval);
+            toast({
+              title: "Cave Magic Complete!",
+              description: "Your caveman transformation is ready!",
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    // Stop polling after 2 minutes
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (isProcessing) {
+        setIsProcessing(false);
+        toast({
+          title: "Cave Magic Taking Long!",
+          description: "Video still processing. Try refreshing or check back later!",
+          variant: "destructive"
+        });
+      }
+    }, 120000);
+  }, [requestId, isProcessing]);
+
   const analyzeImage = async () => {
     if (!selectedImage) {
       toast({
@@ -133,15 +185,22 @@ const CavemanAnalyzer = () => {
 
       if (result.status === "success" && result.video_url && result.video_url.trim() && result.video_url.startsWith('http')) {
         setVideoUrl(result.video_url);
+        setIsProcessing(false);
         toast({
           title: "Cave Magic Complete!",
           description: result.message || "Your caveman transformation is ready!",
         });
       } else if (result.status === "success") {
+        setIsProcessing(true);
+        if (result.request_id) {
+          setRequestId(result.request_id);
+        }
         toast({
           title: "Cave Magic Working!",
-          description: result.message || "Caveman spirits processing your picture! Video coming soon!",
+          description: result.message || "Caveman spirits processing your picture! Checking for video...",
         });
+        // Start polling for video
+        startPollingForVideo();
       } else {
         toast({
           title: "Cave Spirits Angry!",
@@ -259,6 +318,25 @@ const CavemanAnalyzer = () => {
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Processing Status */}
+          {isProcessing && (
+            <Card className="bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
+              <CardContent className="p-4 text-center">
+                <div className="flex items-center justify-center space-x-3 mb-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-yellow-600" />
+                  <p className="text-yellow-800 dark:text-yellow-200 font-medium">
+                    🔥 Cave Spirits Creating Your Video! 🔥
+                  </p>
+                </div>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Video generation in progress... This magical transformation takes time!
+                  <br />
+                  Will auto-refresh when ready (up to 2 minutes)
+                </p>
               </CardContent>
             </Card>
           )}
