@@ -185,35 +185,63 @@ const CavemanAnalyzer = () => {
 
     setIsAnalyzing(true);
 
-    try {
-      // Convert image to base64
-      const base64Image = await convertToBase64(selectedImage);
-      
-      const payload = {
-        image: base64Image,
-        filename: selectedImage.name,
-        mimeType: selectedImage.type,
-        timestamp: new Date().toISOString()
-      };
+    const makeRequest = async (attempt: number = 1): Promise<AnalysisResponse> => {
+      try {
+        // Convert image to base64
+        const base64Image = await convertToBase64(selectedImage);
+        
+        const payload = {
+          image: base64Image,
+          filename: selectedImage.name,
+          mimeType: selectedImage.type,
+          timestamp: new Date().toISOString(),
+          trigger_workflow: true, // Signal to trigger workflow
+          attempt: attempt
+        };
 
-      toast({
-        title: "Caveman Magic Starting!",
-        description: "Sending picture to cave spirits... This take time!",
-      });
+        if (attempt === 1) {
+          toast({
+            title: "Caveman Magic Starting!",
+            description: "Sending picture to cave spirits... This take time!",
+          });
+        } else {
+          toast({
+            title: `Retry Attempt ${attempt}`,
+            description: "Waking up sleeping cave spirits...",
+          });
+        }
 
-      const response = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+        const response = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result: AnalysisResponse = await response.json();
+        return result;
+
+      } catch (error) {
+        console.error(`Analysis attempt ${attempt} failed:`, error);
+        
+        // Retry up to 3 times with exponential backoff
+        if (attempt < 3) {
+          const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s delays
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return makeRequest(attempt + 1);
+        } else {
+          throw error;
+        }
       }
+    };
 
-      const result: AnalysisResponse = await response.json();
+    try {
+      const result = await makeRequest();
 
       if (result.status === "success" && result.video_url && result.video_url.trim() && result.video_url.startsWith('http')) {
         setVideoUrl(result.video_url);
@@ -243,10 +271,10 @@ const CavemanAnalyzer = () => {
       }
 
     } catch (error) {
-      console.error('Analysis error:', error);
+      console.error('Final analysis error:', error);
       toast({
         title: "Cave Magic Failed!",
-        description: "Cave spirits not responding! Backend still being built...",
+        description: "All attempts failed. Please try manually executing your n8n workflow first, then retry.",
         variant: "destructive"
       });
     } finally {
