@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { Upload, Sparkles, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Upload, Sparkles, Loader2, Image as ImageIcon, Download } from 'lucide-react';
 
 interface AnalysisResponse {
   status: string;
@@ -21,6 +21,8 @@ const CavemanAnalyzer = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [processingStage, setProcessingStage] = useState<'analyzing' | 'generating_image' | 'generating_video'>('analyzing');
+  const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
 
   const WEBHOOK_URL = "https://anss1111.app.n8n.cloud/webhook-test/image-analysis";
 
@@ -92,6 +94,36 @@ const CavemanAnalyzer = () => {
     });
   };
 
+  const getProcessingMessage = () => {
+    if (!processingStartTime) return "Preparing...";
+    
+    const elapsed = Math.floor((Date.now() - processingStartTime) / 1000);
+    
+    if (elapsed < 15) {
+      return "🔍 Analyzing your photo...";
+    } else if (elapsed < 90) {
+      return "🎨 Creating your caveman image...";
+    } else {
+      return "🎬 Generating your transformation video...";
+    }
+  };
+
+  const getEstimatedTimeRemaining = () => {
+    if (!processingStartTime) return "2-4 minutes";
+    
+    const elapsed = Math.floor((Date.now() - processingStartTime) / 1000);
+    
+    if (elapsed < 15) {
+      return "2-4 minutes remaining";
+    } else if (elapsed < 90) {
+      return "1-3 minutes remaining";
+    } else if (elapsed < 180) {
+      return "1-2 minutes remaining";
+    } else {
+      return "Almost done...";
+    }
+  };
+
   const startPollingForVideo = useCallback(() => {
     const pollInterval = setInterval(async () => {
       try {
@@ -127,7 +159,7 @@ const CavemanAnalyzer = () => {
       }
     }, 5000); // Poll every 5 seconds
 
-    // Stop polling after 2 minutes
+    // Stop polling after 6 minutes (safety buffer)
     setTimeout(() => {
       clearInterval(pollInterval);
       if (isProcessing) {
@@ -138,7 +170,7 @@ const CavemanAnalyzer = () => {
           variant: "destructive"
         });
       }
-    }, 120000);
+    }, 360000); // 6 minutes
   }, [requestId, isProcessing]);
 
   const analyzeImage = async () => {
@@ -192,12 +224,13 @@ const CavemanAnalyzer = () => {
         });
       } else if (result.status === "success") {
         setIsProcessing(true);
+        setProcessingStartTime(Date.now());
         if (result.request_id) {
           setRequestId(result.request_id);
         }
         toast({
           title: "Cave Magic Working!",
-          description: result.message || "Caveman spirits processing your picture! Checking for video...",
+          description: "This process typically takes 2-4 minutes. Please keep this tab open!",
         });
         // Start polling for video
         startPollingForVideo();
@@ -326,17 +359,20 @@ const CavemanAnalyzer = () => {
           {isProcessing && (
             <Card className="bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
               <CardContent className="p-4 text-center">
-                <div className="flex items-center justify-center space-x-3 mb-2">
-                  <Loader2 className="h-5 w-5 animate-spin text-yellow-600" />
-                  <p className="text-yellow-800 dark:text-yellow-200 font-medium">
-                    🔥 Cave Spirits Creating Your Video! 🔥
+                <div className="flex items-center justify-center space-x-3 mb-3">
+                  <Loader2 className="h-6 w-6 animate-spin text-yellow-600" />
+                  <p className="text-yellow-800 dark:text-yellow-200 font-bold text-lg">
+                    {getProcessingMessage()}
                   </p>
                 </div>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  Video generation in progress... This magical transformation takes time!
-                  <br />
-                  Will auto-refresh when ready (up to 2 minutes)
-                </p>
+                <div className="space-y-2">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300 font-medium">
+                    {getEstimatedTimeRemaining()}
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                    Please keep this tab open while we work our magic! 🪄
+                  </p>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -347,16 +383,34 @@ const CavemanAnalyzer = () => {
               <CardHeader>
                 <CardTitle className="text-center">🎬 Your Caveman Transformation! 🎬</CardTitle>
               </CardHeader>
-              <CardContent className="text-center">
+              <CardContent className="text-center space-y-4">
                 <video
                   src={videoUrl}
                   controls
                   autoPlay
                   className="w-full max-w-md mx-auto rounded-lg shadow-lg"
                   style={{ maxWidth: '500px' }}
+                  preload="metadata"
                 >
                   Your browser does not support video playback.
                 </video>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = videoUrl;
+                    link.download = 'caveman-transformation.mp4';
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Download Video
+                </Button>
                 <p className="text-sm text-muted-foreground mt-2">
                   Cave spirits have transformed you into a mighty caveman warrior!
                 </p>
