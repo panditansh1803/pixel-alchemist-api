@@ -24,7 +24,7 @@ const CavemanAnalyzer = () => {
   const [processingStage, setProcessingStage] = useState<'analyzing' | 'generating_image' | 'generating_video'>('analyzing');
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
 
-  const WEBHOOK_URL = "https://anss1111.app.n8n.cloud/webhook-test/image-analysis";
+  const WEBHOOK_URL = "https://anss1111.app.n8n.cloud/webhook/image-analysis";
 
   const handleFileSelect = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) {
