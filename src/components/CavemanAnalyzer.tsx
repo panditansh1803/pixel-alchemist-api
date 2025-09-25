@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
-import { Upload, Sparkles, Loader2, Image as ImageIcon, Download } from 'lucide-react';
+import { ProgressBar } from '@/components/ui/progress-bar';
+import { Upload, Sparkles, Loader2, Image as ImageIcon, Download, Share2, Camera, Zap } from 'lucide-react';
 
 interface AnalysisResponse {
   status: string;
@@ -23,6 +24,8 @@ const CavemanAnalyzer = () => {
   const [requestId, setRequestId] = useState<string | null>(null);
   const [processingStage, setProcessingStage] = useState<'analyzing' | 'generating_image' | 'generating_video'>('analyzing');
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   const WEBHOOK_URL = "https://anss1111.app.n8n.cloud/webhook/image-analysis";
 
@@ -95,18 +98,39 @@ const CavemanAnalyzer = () => {
   };
 
   const getProcessingMessage = () => {
-    if (!processingStartTime) return "Preparing...";
+    if (!processingStartTime) return "Preparing cave magic...";
     
     const elapsed = Math.floor((Date.now() - processingStartTime) / 1000);
     
     if (elapsed < 15) {
-      return "🔍 Analyzing your photo...";
+      return "🔍 Cave spirits analyzing your essence...";
     } else if (elapsed < 90) {
-      return "🎨 Creating your caveman image...";
+      return "🎨 Ancient artists crafting your caveman form...";
     } else {
-      return "🎬 Generating your transformation video...";
+      return "🎬 Weaving time magic for your transformation...";
     }
   };
+
+  // Calculate progress based on elapsed time
+  const getProgress = () => {
+    if (!processingStartTime) return 0;
+    
+    const elapsed = Math.floor((Date.now() - processingStartTime) / 1000);
+    const totalEstimatedTime = 240; // 4 minutes
+    
+    return Math.min((elapsed / totalEstimatedTime) * 100, 95); // Cap at 95% until completion
+  };
+
+  // Update progress periodically
+  useEffect(() => {
+    if (!isProcessing || !processingStartTime) return;
+
+    const interval = setInterval(() => {
+      setProgress(getProgress());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isProcessing, processingStartTime]);
 
   const getEstimatedTimeRemaining = () => {
     if (!processingStartTime) return "2-4 minutes";
@@ -147,11 +171,16 @@ const CavemanAnalyzer = () => {
           if (result.status === "success" && result.video_url && result.video_url.trim() && result.video_url.startsWith('http')) {
             setVideoUrl(result.video_url);
             setIsProcessing(false);
+            setProgress(100);
+            setShowSuccessAnimation(true);
             clearInterval(pollInterval);
             toast({
-              title: "Cave Magic Complete!",
-              description: "Your caveman transformation is ready!",
+              title: "🎉 Epic Transformation Complete! 🎉",
+              description: "Behold your mighty caveman form! The ancestors are proud!",
             });
+            
+            // Hide success animation after 3 seconds
+            setTimeout(() => setShowSuccessAnimation(false), 3000);
           }
         }
       } catch (error) {
@@ -246,10 +275,15 @@ const CavemanAnalyzer = () => {
       if (result.status === "success" && result.video_url && result.video_url.trim() && result.video_url.startsWith('http')) {
         setVideoUrl(result.video_url);
         setIsProcessing(false);
+        setProgress(100);
+        setShowSuccessAnimation(true);
         toast({
-          title: "Cave Magic Complete!",
-          description: result.message || "Your caveman transformation is ready!",
+          title: "🎉 Epic Transformation Complete! 🎉",
+          description: result.message || "Behold your mighty caveman form! The ancestors are proud!",
         });
+        
+        // Hide success animation after 3 seconds
+        setTimeout(() => setShowSuccessAnimation(false), 3000);
       } else if (result.status === "success") {
         setIsProcessing(true);
         setProcessingStartTime(Date.now());
@@ -282,182 +316,243 @@ const CavemanAnalyzer = () => {
     }
   };
 
+  const shareTransformation = async () => {
+    if (!videoUrl) return;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'My Epic Caveman Transformation!',
+          text: 'Check out my amazing caveman transformation created with Cave Magic!',
+          url: window.location.href
+        });
+      } catch (error) {
+        console.log('Share cancelled');
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: "Link Copied!",
+        description: "Share your transformation with friends!",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl stone-texture">
-        <CardHeader className="text-center">
-          <CardTitle className="text-4xl md:text-5xl mb-4">
-            🔥 CAVEMAN CANVAS CRAFT 🔥
-          </CardTitle>
-          <CardDescription className="text-lg">
-            Upload your picture and discover your inner caveman! 
-            The cave spirits will transform you into ancient warrior!
-          </CardDescription>
-        </CardHeader>
+      <main className="w-full max-w-2xl">
+        <Card className="stone-texture fade-in">
+          <CardHeader className="text-center">
+            <h1 className="text-4xl md:text-5xl mb-4 bounce-in">
+              🔥 CAVEMAN CANVAS CRAFT 🔥
+            </h1>
+            <CardDescription className="text-lg">
+              Upload your picture and discover your inner caveman! 
+              The cave spirits will transform you into an ancient warrior!
+            </CardDescription>
+          </CardHeader>
 
-        <CardContent className="space-y-6">
-          {/* Upload Area */}
-          <div
-            className={`upload-area rounded-lg p-8 text-center cursor-pointer transition-all duration-300 ${
-              isDragOver ? 'dragover' : ''
-            }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onClick={() => document.getElementById('file-input')?.click()}
-          >
-            <input
-              id="file-input"
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
-              className="hidden"
-            />
-            
-            {imagePreview ? (
-              <div className="space-y-4">
-                <img
-                  src={imagePreview}
-                  alt="Selected"
-                  className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Picture ready! Click magic button below!
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex justify-center">
-                  <div className="p-4 rounded-full bg-primary/10">
-                    <Upload className="h-12 w-12 text-primary" />
+          <CardContent className="space-y-6">
+            {/* Upload Area */}
+            <section 
+              className={`upload-area rounded-lg p-8 text-center cursor-pointer transition-all duration-300 ${
+                isDragOver ? 'dragover' : ''
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => document.getElementById('file-input')?.click()}
+              role="button"
+              tabIndex={0}
+              aria-label="Upload image area"
+            >
+              <input
+                id="file-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => e.target.files?.[0] && handleFileSelect(e.target.files[0])}
+                className="sr-only"
+                aria-describedby="upload-description"
+              />
+              
+              {imagePreview ? (
+                <div className="space-y-4">
+                  <img
+                    src={imagePreview}
+                    alt="Selected image preview - ready for caveman transformation"
+                    className="max-w-full max-h-64 mx-auto rounded-lg shadow-lg"
+                    loading="lazy"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    🎯 Picture locked and loaded! Click the magic button below!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-center">
+                    <div className="p-4 rounded-full bg-primary/10 pulse-glow">
+                      <Camera className="h-12 w-12 text-primary" />
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-xl font-semibold mb-2">
-                    Drop Picture Here or Click!
-                  </p>
-                  <p className="text-muted-foreground">
-                    Caveman need good picture to make magic! 
-                    <br />
-                    JPG, PNG, WEBP welcome (Max 10MB)
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Analysis Button */}
-          <Button
-            onClick={analyzeImage}
-            disabled={!selectedImage || isAnalyzing}
-            className="w-full h-14 text-lg font-bold fire-glow"
-            size="lg"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                Cave Spirits Working...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-3 h-6 w-6" />
-                How Will I Be As A Caveman? 🦴
-              </>
-            )}
-          </Button>
-
-          {/* Info Section */}
-          {selectedImage && (
-            <Card className="bg-accent/20">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-3">
-                  <ImageIcon className="h-5 w-5 text-accent" />
-                  <div className="text-sm">
-                    <p className="font-medium">{selectedImage.name}</p>
-                    <p className="text-muted-foreground">
-                      Size: {(selectedImage.size / 1024 / 1024).toFixed(2)} MB
+                  <div>
+                    <h2 className="text-xl font-semibold mb-2">
+                      📸 Drop Your Photo Here or Click!
+                    </h2>
+                    <p id="upload-description" className="text-muted-foreground">
+                      Feed the cave spirits your finest portrait! 
+                      <br />
+                      JPG, PNG, WEBP formats accepted (Max 10MB)
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </section>
 
-          {/* Processing Status */}
-          {isProcessing && (
-            <Card className="bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700">
+            {/* Analysis Button */}
+            <Button
+              onClick={analyzeImage}
+              disabled={!selectedImage || isAnalyzing}
+              className="w-full h-14 text-lg font-bold fire-glow"
+              size="lg"
+              aria-label="Start caveman transformation"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-3 h-6 w-6 animate-spin" />
+                  Cave Spirits Working...
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-3 h-6 w-6" />
+                  ⚡ Transform Me Into A Caveman! 🦴
+                </>
+              )}
+            </Button>
+
+            {/* Image Info Section */}
+            {selectedImage && (
+              <Card className="bg-accent/20 fade-in">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <ImageIcon className="h-5 w-5 text-accent" />
+                    <div className="text-sm">
+                      <p className="font-medium">{selectedImage.name}</p>
+                      <p className="text-muted-foreground">
+                        Size: {(selectedImage.size / 1024 / 1024).toFixed(2)} MB | 
+                        Format: {selectedImage.type.split('/')[1].toUpperCase()}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Processing Status */}
+            {isProcessing && (
+              <Card className="bg-yellow-100 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 fade-in">
+                <CardContent className="p-6 text-center">
+                  <div className="flex items-center justify-center space-x-3 mb-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-yellow-600" />
+                    <h3 className="text-yellow-800 dark:text-yellow-200 font-bold text-lg">
+                      {getProcessingMessage()}
+                    </h3>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <ProgressBar progress={progress} className="mb-4" />
+                    
+                    <div className="space-y-2">
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300 font-medium">
+                        {getEstimatedTimeRemaining()}
+                      </p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                        ⚡ Ancient magic takes time! Keep this sacred window open! 🏺
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Video Display */}
+            {videoUrl && (
+              <Card className={`bg-accent/20 ${showSuccessAnimation ? 'bounce-in' : 'fade-in'}`}>
+                <CardHeader>
+                  <h2 className="text-center text-2xl">
+                    🎬 Behold Your Epic Transformation! 🎬
+                  </h2>
+                  {showSuccessAnimation && (
+                    <p className="text-center text-lg text-accent animate-pulse">
+                      ✨ The ancient magic is complete! ✨
+                    </p>
+                  )}
+                </CardHeader>
+                <CardContent className="text-center space-y-6">
+                  <video
+                    src={videoUrl}
+                    controls
+                    autoPlay
+                    className="w-full max-w-md mx-auto rounded-lg shadow-lg"
+                    style={{ maxWidth: '500px' }}
+                    preload="metadata"
+                    aria-label="Your caveman transformation video"
+                  >
+                    <track kind="captions" src="" label="English" />
+                    Your browser does not support video playback.
+                  </video>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = videoUrl;
+                        link.download = 'epic-caveman-transformation.mp4';
+                        link.target = '_blank';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Masterpiece
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={shareTransformation}
+                      className="flex items-center gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Share Your Glory
+                    </Button>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground mt-2">
+                    🏺 The ancestors smile upon your transformation! You are now a legendary cave warrior! 🗿
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Development Notice */}
+            <Card className="bg-muted/50 border-dashed">
               <CardContent className="p-4 text-center">
-                <div className="flex items-center justify-center space-x-3 mb-3">
-                  <Loader2 className="h-6 w-6 animate-spin text-yellow-600" />
-                  <p className="text-yellow-800 dark:text-yellow-200 font-bold text-lg">
-                    {getProcessingMessage()}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 font-medium">
-                    {getEstimatedTimeRemaining()}
-                  </p>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
-                    Please keep this tab open while we work our magic! 🪄
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Video Display */}
-          {videoUrl && (
-            <Card className="bg-accent/20">
-              <CardHeader>
-                <CardTitle className="text-center">🎬 Your Caveman Transformation! 🎬</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <video
-                  src={videoUrl}
-                  controls
-                  autoPlay
-                  className="w-full max-w-md mx-auto rounded-lg shadow-lg"
-                  style={{ maxWidth: '500px' }}
-                  preload="metadata"
-                >
-                  Your browser does not support video playback.
-                </video>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = videoUrl;
-                    link.download = 'caveman-transformation.mp4';
-                    link.target = '_blank';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  Download Video
-                </Button>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Cave spirits have transformed you into a mighty caveman warrior!
+                <p className="text-sm text-muted-foreground">
+                  🛠️ <strong>Cave Forge Status:</strong> ⚒️
+                  <br />
+                  The mystical backend spirits are still perfecting their ancient algorithms. 
+                  Epic transformations may require patience as the magic stabilizes!
                 </p>
               </CardContent>
             </Card>
-          )}
-
-          {/* Warning for Backend */}
-          <Card className="bg-muted/50 border-dashed">
-            <CardContent className="p-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                🚧 <strong>Cave Under Construction!</strong> 🚧
-                <br />
-                Backend spirits still learning magic. Video creation may not work yet!
-              </p>
-            </CardContent>
-          </Card>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 };
