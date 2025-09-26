@@ -17,11 +17,25 @@ export const useAuth = () => {
       }
     );
 
-    // THEN check for existing session
+    // THEN check for existing session, but avoid racing the email-confirm redirect
+    const hasAuthHash = typeof window !== 'undefined' && !!window.location.hash && (
+      window.location.hash.includes('access_token') ||
+      window.location.hash.includes('refresh_token') ||
+      window.location.hash.includes('type=signup') ||
+      window.location.hash.includes('type=recovery')
+    );
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      if (session) {
+        setLoading(false);
+      } else {
+        // If we're returning from an email link, let onAuthStateChange finalize the session
+        if (!hasAuthHash) {
+          setLoading(false);
+        }
+      }
     });
 
     return () => subscription.unsubscribe();
