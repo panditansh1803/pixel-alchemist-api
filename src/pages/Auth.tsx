@@ -22,14 +22,24 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in and redirect
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/');
+        navigate('/', { replace: true });
       }
     };
+    
+    // Also listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        navigate('/', { replace: true });
+      }
+    });
+
     checkUser();
+    
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const validateInput = () => {
@@ -81,7 +91,7 @@ const Auth = () => {
       } else {
         toast({
           title: "🎉 Welcome to the Cave!",
-          description: "Account created! Check your email to confirm your account, then log in.",
+          description: "Account created! Please check your email and click the confirmation link to complete your registration.",
         });
         setIsLogin(true);
       }
@@ -113,6 +123,12 @@ const Auth = () => {
             description: "Invalid email or password. Please check your credentials.",
             variant: "destructive"
           });
+        } else if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: "Email Not Confirmed",
+            description: "Please check your email and click the confirmation link before logging in.",
+            variant: "destructive"
+          });
         } else {
           toast({
             title: "Login Failed",
@@ -123,9 +139,9 @@ const Auth = () => {
       } else {
         toast({
           title: "🔥 Welcome Back, Cave Warrior!",
-          description: "Successfully logged in! Ready to transform?",
+          description: "Successfully logged in! Redirecting to the cave...",
         });
-        navigate('/');
+        // The useEffect will handle the navigation automatically
       }
     } catch (error) {
       toast({
