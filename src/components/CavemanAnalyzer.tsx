@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { Upload, Sparkles, Loader2, Image as ImageIcon, Download, Share2, Camera, Zap } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Upload, Sparkles, Loader2, Image as ImageIcon, Download, Share2, Camera, Zap, LogOut, User } from 'lucide-react';
 
 interface AnalysisResponse {
   status: string;
@@ -15,6 +16,7 @@ interface AnalysisResponse {
 }
 
 const CavemanAnalyzer = () => {
+  const { user, signOut } = useAuth();
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -339,8 +341,37 @@ const CavemanAnalyzer = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: "Goodbye, Cave Warrior!",
+      description: "You have left the sacred cave. Return anytime!",
+    });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
+      {/* User Menu */}
+      <div className="fixed top-4 right-4 z-10">
+        <div className="flex items-center gap-3 bg-card/80 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+          <div className="flex items-center gap-2 text-sm">
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline font-medium">
+              {user?.email?.split('@')[0] || 'Cave Warrior'}
+            </span>
+          </div>
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            size="sm"
+            className="h-8"
+          >
+            <LogOut className="h-4 w-4 mr-1" />
+            <span className="hidden sm:inline">Exit Cave</span>
+          </Button>
+        </div>
+      </div>
+
       <main className="w-full max-w-2xl">
         <Card className="stone-texture fade-in">
           <CardHeader className="text-center">
